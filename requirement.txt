@@ -2,7 +2,6 @@ flask
 pandas
 openpyxl
 datetime
-time
 urllib
 json
 ssl
