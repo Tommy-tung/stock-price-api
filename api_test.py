@@ -4,6 +4,7 @@ app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
 def echo():
+    print(request)
     data = request.get_json()
     print("Received data:", data)
     return jsonify({"received": data})
