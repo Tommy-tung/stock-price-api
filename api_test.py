@@ -7,8 +7,8 @@ app = Flask(__name__)
 def echo():
     # print(request)
     data = request.get_json()
-    df = pd.read('s&p500_data.xlsx')
-    stock_list = df['代碼'].values[:5]
+    df = pd.read_excel('s&p500_data.xlsx')
+    stock_list = df['代碼'].values[:5].to_list()
     print("Received data:", data)
     return jsonify({"received": data, "stock" : stock_list})
 
