@@ -3,7 +3,6 @@ import pandas as pd
 import pandas as pd
 import datetime
 import time
-import urllib.request
 import json
 import ssl
 import re
@@ -16,6 +15,7 @@ from pypfopt.efficient_frontier.efficient_semivariance import EfficientSemivaria
 from pypfopt.efficient_frontier.efficient_cvar import EfficientCVaR
 # import matplotlib.pyplot as plt
 import cvxpy as cp
+import requests
 
 # 下載股價資料
 def clean_query(query_str):
@@ -33,16 +33,18 @@ def pricedata(symbol):
         try:
             url = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?period1={timestamp}&period2={timestamp2}&interval=1d&events=history&includeAdjustedClose=true"
             headers = {'User-Agent': 'Mozilla/5.0'}
-            context = ssl._create_unverified_context()
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, context=context) as jsondata:
-                j = json.loads(jsondata.read().decode('utf-8-sig'))
-                timestamps = j['chart']['result'][0]['timestamp']
-                closes = j['chart']['result'][0]['indicators']['quote'][0]['close']
-                df = pd.DataFrame({'timestamp': timestamps, 'Close': closes})
-                df['Date'] = pd.to_datetime(df['timestamp'], unit='s')
-                df.set_index('Date', inplace=True)
-                return df[['Close']].dropna()
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()  # 如果 HTTP 錯誤會丟出例外
+            
+            j = response.json()
+            timestamps = j['chart']['result'][0]['timestamp']
+            closes = j['chart']['result'][0]['indicators']['quote'][0]['close']
+            
+            df = pd.DataFrame({'timestamp': timestamps, 'Close': closes})
+            df['Date'] = pd.to_datetime(df['timestamp'], unit='s')
+            df.set_index('Date', inplace=True)
+            
+            return df[['Close']].dropna()
         except Exception as e:
             print(f"錯誤: {e}")
             time.sleep(5)
