@@ -6,6 +6,7 @@ import time
 import urllib.request
 import json
 import ssl
+import re
 from dateutil.relativedelta import relativedelta
 import numpy as np
 from pypfopt.efficient_frontier import EfficientFrontier
@@ -17,152 +18,9 @@ from pypfopt.efficient_frontier.efficient_cvar import EfficientCVaR
 import cvxpy as cp
 
 # 下載股價資料
-def pricedata(symbol):
-    today = datetime.date.today()
-    oneyear = today - relativedelta(years=3)
-    timestamp = int(time.mktime(oneyear.timetuple()))
-    timestamp2 = int(time.mktime(today.timetuple()))
-    while True:
-        try:
-            url = f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?period1={timestamp}&period2={timestamp2}&interval=1d&events=history&includeAdjustedClose=true"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            context = ssl._create_unverified_context()
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, context=context) as jsondata:
-                j = json.loads(jsondata.read().decode('utf-8-sig'))
-                timestamps = j['chart']['result'][0]['timestamp']
-                closes = j['chart']['result'][0]['indicators']['quote'][0]['close']
-                df = pd.DataFrame({'timestamp': timestamps, 'Close': closes})
-                df['Date'] = pd.to_datetime(df['timestamp'], unit='s')
-                df.set_index('Date', inplace=True)
-                return df[['Close']].dropna()
-        except Exception as e:
-            print(f"錯誤: {e}")
-            time.sleep(5)
+def clean_query(query_str):
+    return query_str.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
 
-# Logging setup
-today_str = datetime.date.today().strftime("%Y%m%d")
-log_filename = f"data_selection_log_{today_str}.txt"
-
-def log(msg):
-    with open(log_filename, "a", encoding="utf-8") as f:
-        print(msg)
-        f.write(msg + "\n")
-
-def clean_symbol(code):
-    return str(code).split()[0] if pd.notna(code) else ""
-
-def needs_price_data(label):
-    price_keywords = {"現價", "收盤價", "close", "Close"}
-    # Detect if the query references price variables
-    if label.get('query_type') == "price_query":
-        return True
-    return any(col in price_keywords for col in label.get('columns', []))
-
-def select_symbols(df: pd.DataFrame, label_filters: list) -> list:
-    try:
-        overall_mask = pd.Series([True] * len(df))
-        price_labels = []
-        for label in label_filters:
-            qtype = label.get('query_type')
-            missing_cols = [col for col in label.get('columns', []) if col not in df.columns]
-            if needs_price_data(label):
-                price_labels.append(label)
-                log(f"[INFO] Label '{label['label_zh']}' requires price data. Will use pricedata(symbol) for evaluation.")
-                continue # Will handle after other filters
-            elif missing_cols:
-                log(f"[ERROR] Label '{label['label_zh']}' missing columns in data: {missing_cols}. Skipping this filter.")
-                return []
-            else:
-                log(f"[INFO] Applying label '{label['label_zh']}' (type: {qtype})...")
-
-            # --- Fix: ensure relevant columns are numeric (for numeric comparison queries)
-            if qtype in ("condition", "condition_and", "condition_or", "percentile", "percentile_and"):
-                for col in label.get('columns', []):
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors='coerce')
-
-            # Non-price-data queries
-            if qtype in ("condition", "condition_and", "condition_or"):
-                mask = eval(label['query'], {"df": df})
-            elif qtype == "percentile":
-                col = label['columns'][0]
-                p = label['percentile'] / 100.0
-                mask = df[col] <= df[col].quantile(p) if p < 0.5 else df[col] >= df[col].quantile(p)
-            elif qtype == "percentile_and":
-                mask = pd.Series([True] * len(df))
-                percentiles = label.get('percentiles', {})
-                for col, perc in percentiles.items():
-                    p = perc / 100.0
-                    mask &= df[col] <= df[col].quantile(p) if p < 0.5 else df[col] >= df[col].quantile(p)
-                if "query" in label and "&" in label["query"]:
-                    parts = label["query"].split("&", 1)
-                    extra_cond = parts[1].strip()
-                    mask &= eval(extra_cond, {"df": df})
-            elif qtype == "keyword":
-                mask = pd.Series([False] * len(df))
-                for col in label['columns']:
-                    for kw in label['keywords']:
-                        mask |= df[col].astype(str).str.contains(kw, case=False, na=False)
-            else:
-                log(f"[ERROR] Unknown query_type: {qtype} in label '{label['label_zh']}'.")
-                return []
-
-            overall_mask &= mask
-            log(f"[INFO] After label '{label['label_zh']}', {overall_mask.sum()} stocks remain.")
-
-        # First filter using non-price-data conditions
-        filtered_df = df[overall_mask].copy()
-        log(f"[INFO] {len(filtered_df)} symbols match all non-price-data conditions.")
-
-        # If there are price-based labels, filter further
-        final_symbols = []
-        for idx, row in filtered_df.iterrows():
-            symbol_raw = row['代碼']
-            symbol = clean_symbol(symbol_raw)
-            keep = True
-            for label in price_labels:
-                log(f"[INFO] Checking price-data label '{label['label_zh']}' for {symbol} ...")
-                try:
-                    price_df = pricedata(symbol)
-                    # Prepare local variables for eval
-                    latest_close = price_df['Close'].iloc[-1]
-                    local_vars = {
-                        "price_df": price_df,
-                        "latest_close": latest_close,
-                        "pd": pd,
-                        "symbol": symbol
-                    }
-                    # Now eval label['query'] which should use latest_close, price_df, etc.
-                    if not eval(label['query'], {}, local_vars):
-                        keep = False
-                        log(f"[INFO] Symbol {symbol} does not match price-data label '{label['label_zh']}' (Query: {label['query']}).")
-                        break
-                except Exception as e:
-                    log(f"[ERROR] Failed to fetch or process price data for {symbol}: {e}")
-                    keep = False
-                    break
-            if keep:
-                final_symbols.append(symbol)
-
-        # If no price labels, just return the symbol list
-        if not price_labels:
-            final_symbols = [clean_symbol(x) for x in filtered_df['代碼']]
-
-        if not final_symbols:
-            log("[ERROR] No symbols match all filter conditions or all failed price data query.")
-        else:
-            log(f"[INFO] Final selected pool: {final_symbols}")
-        return final_symbols
-    except Exception as ex:
-        log(f"[EXCEPTION] {ex}")
-        return []
-
-# Example main block
-
-
-
-# log(f"[RESULT] pool = {pool}")
 
 
 # 下載股價資料
@@ -314,7 +172,7 @@ def echo():
     # print(request)
     data = request.get_json()
     df = pd.read_excel('s&p500_data.xlsx')
-    label_filters = [
+    json_string = [
     {
         "label_zh": "低波動",
         "label_en": "Low Volatility",
@@ -333,8 +191,45 @@ def echo():
         "percentile": 30,
         "query": "df['市值'] <= df['市值'].quantile(0.3)"
     }
-]
-    pool = select_symbols(df, label_filters)
+    ]
+    data= json.loads(json_string)
+    combined_mask = pd.Series([True] * len(df))
+
+    # 遍歷所有可能是 label 的欄位（只處理 list 結構）
+    for label_group in data.values():
+        if isinstance(label_group, list):
+            for label in label_group:
+                query_type = label.get("query_type", "")
+                query = label.get("query", "")
+                label_name = label.get("label_zh", "未命名標籤")
+
+                label_mask = pd.Series([True] * len(df))  # 預設為全 True
+
+                if query_type == "keyword" and query == "欄位中包含任一關鍵字":
+                    columns = [col["item"] for col in label.get("columns", [])]
+                    keywords = [kw["item"] for kw in label.get("keywords", [])]
+
+                    label_mask = df[columns].apply(
+                        lambda col: col.astype(str).apply(lambda val: any(keyword in val for keyword in keywords))
+                    ).any(axis=1)
+
+                else:
+                    try:
+                        cleaned_query = clean_query(query)
+                        label_mask = eval(cleaned_query, {"df": df, "pd": pd})
+                    except Exception as e:
+                        print(f"⚠️ 無法執行「{label_name}」的 query：{e}")
+                        continue
+
+                # 將目前條件與累積條件取交集
+                combined_mask &= label_mask
+                print(f"✅ 套用「{label_name}」條件後剩下的資料列：")
+                print(df[label_mask])
+
+# 套用所有條件後的結果
+    final_result = df[combined_mask]
+    pool=final_result['代碼'].tolist()
+    pool = [item.split()[0] for item in pool]
     df_result, df_weights = portfolio(pool)
     # stock_list = df['代碼'].values[:5].tolist()
     # print("Received data:", data)
