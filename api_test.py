@@ -8,7 +8,7 @@ def echo():
     # print(request)
     data = request.get_json()
     df = pd.read_excel('s&p500_data.xlsx')
-    stock_list = df['代碼'].values[:5].to_list()
+    stock_list = df['代碼'].values[:5].tolist()
     print("Received data:", data)
     return jsonify({"received": data, "stock" : stock_list})
 
