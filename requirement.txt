@@ -1,4 +1,12 @@
 flask
 pandas
 openpyxl
+datetime
+time
+urllib
+json
+ssl
+dateutil
+pypfopt
+cvxpy
 gunicorn
