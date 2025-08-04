@@ -177,32 +177,34 @@ app = Flask(__name__)
 def echo():
     # print(request)
     data = request.get_json()
+    name = data.get('name')
+    json_string = data.get('stock_json')
     df = pd.read_excel('s&p500_data.xlsx')
     # df = pd.read_excel('/Users/tommy84729/富邦/黑客松/stock_price_api/s&p500_data.xlsx')
-    json_string = """{
-        "investing_labels": [
-            {
-            "label_zh": "穩健波動",
-            "label_en": "Low Volatility",
-            "description": "60日波動率在所有股票下30%，且 Beta < 1",
-            "columns": [{"item": "60日波動率"}, {"item": "Beta"}],
-            "query_type": "percentile_and",
-            "percentiles": {"60日波動率": 30},
-            "query": "(df['60日波動率'] <= df['60日波動率'].quantile(0.3)) & (df['Beta'] < 1)"
-            }
-        ],
-        "industry_labels": [
-            {
-            "label_zh": "科技股",
-            "label_en": "Technology Stock",
-            "description": "產業分類相關欄位包含『科技』、『半導體』、『資訊』等關鍵字",
-            "columns": [{"item": "GICS行業板塊"}, {"item": "Class L4 Nm"}, {"item": "當地分類簡介"}],
-            "query_type": "keyword",
-            "keywords": [{"item": "科技"}, {"item": "半導體"}, {"item": "資訊"}],
-            "query": "欄位中包含任一關鍵字"
-            }
-        ]
-    }"""
+    # json_string = """{
+    #     "investing_labels": [
+    #         {
+    #         "label_zh": "穩健波動",
+    #         "label_en": "Low Volatility",
+    #         "description": "60日波動率在所有股票下30%，且 Beta < 1",
+    #         "columns": [{"item": "60日波動率"}, {"item": "Beta"}],
+    #         "query_type": "percentile_and",
+    #         "percentiles": {"60日波動率": 30},
+    #         "query": "(df['60日波動率'] <= df['60日波動率'].quantile(0.3)) & (df['Beta'] < 1)"
+    #         }
+    #     ],
+    #     "industry_labels": [
+    #         {
+    #         "label_zh": "科技股",
+    #         "label_en": "Technology Stock",
+    #         "description": "產業分類相關欄位包含『科技』、『半導體』、『資訊』等關鍵字",
+    #         "columns": [{"item": "GICS行業板塊"}, {"item": "Class L4 Nm"}, {"item": "當地分類簡介"}],
+    #         "query_type": "keyword",
+    #         "keywords": [{"item": "科技"}, {"item": "半導體"}, {"item": "資訊"}],
+    #         "query": "欄位中包含任一關鍵字"
+    #         }
+    #     ]
+    # }"""
     # json_str = json.dumps(json_string)       # 轉為 JSON 字串
     data = json.loads(json_string)
     combined_mask = pd.Series([True] * len(df))
@@ -248,8 +250,9 @@ def echo():
 
 
     return jsonify({
-    "result": df_result.to_dict(orient="records"),
-    "weight": df_weights.to_dict(orient="records")
+        "name" : name,
+        "result": df_result.to_dict(orient="records"),
+        "weight": df_weights.to_dict(orient="records")
     })
 
 if __name__ == '__main__':
