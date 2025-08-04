@@ -177,8 +177,8 @@ app = Flask(__name__)
 def echo():
     # print(request)
     data = request.get_json()
-    # df = pd.read_excel('s&p500_data.xlsx')
-    df = pd.read_excel('/Users/tommy84729/富邦/黑客松/stock_price_api/s&p500_data.xlsx')
+    df = pd.read_excel('s&p500_data.xlsx')
+    # df = pd.read_excel('/Users/tommy84729/富邦/黑客松/stock_price_api/s&p500_data.xlsx')
     json_string = """{
         "investing_labels": [
             {
