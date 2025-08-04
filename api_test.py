@@ -177,6 +177,7 @@ app = Flask(__name__)
 def echo():
     # print(request)
     data = request.get_json()
+    print(data)
     name = data.get('name')
     json_string = data.get('stock_json')
     df = pd.read_excel('s&p500_data.xlsx')
