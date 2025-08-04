@@ -1,21 +1,21 @@
 from flask import Flask, request, jsonify
 import pandas as pd
-import pandas as pd
 import datetime
 import time
 import json
 import ssl
 import re
 from dateutil.relativedelta import relativedelta
-import numpy as np
 from pypfopt.efficient_frontier import EfficientFrontier
 from pypfopt.expected_returns import mean_historical_return
 from pypfopt.risk_models import CovarianceShrinkage
 from pypfopt.efficient_frontier.efficient_semivariance import EfficientSemivariance
 from pypfopt.efficient_frontier.efficient_cvar import EfficientCVaR
+from pypfopt.risk_models import sample_cov
 # import matplotlib.pyplot as plt
 import cvxpy as cp
 import requests
+import numpy as np
 
 # 下載股價資料
 def clean_query(query_str):
@@ -56,7 +56,7 @@ def compute_risk_parity_weights(cov_matrix):
     objective = cp.Minimize(cp.sum(-cp.log(w)) + cp.quad_form(w, cov_matrix.values))
     constraints = [cp.sum(w) == 1, w >= 1e-6] # 加上 lower bound 防止 log(0)
     problem = cp.Problem(objective, constraints)
-    problem.solve()
+    problem.solve(solver=cp.SCS)
     return pd.Series(w.value, index=cov_matrix.columns)
 
 
@@ -79,11 +79,15 @@ def portfolio(tickerslist):
     sp500 = pricedata(benchmark)
     sp500 = sp500.reindex(price_df.index).dropna()
     price_df = price_df.loc[sp500.index]
+    print(price_df)
 
     # 計算報酬與風險
     returns = price_df.pct_change().dropna()
     mu = mean_historical_return(price_df)
+    print(mu, type(mu))
     S = CovarianceShrinkage(price_df).ledoit_wolf()
+    # S = S.values.astype(np.float64)
+    print(S, type(S))
 
     # 儲存所有模型配置
     portfolios = {}
@@ -175,27 +179,32 @@ def echo():
     data = request.get_json()
     # df = pd.read_excel('s&p500_data.xlsx')
     df = pd.read_excel('/Users/tommy84729/富邦/黑客松/stock_price_api/s&p500_data.xlsx')
-    json_string = [
-    {
-        "label_zh": "低波動",
-        "label_en": "Low Volatility",
-        "description": "60日波動率在所有股票下30%，且Beta < 1",
-        "columns": ["60日波動率", "Beta"],
-        "query_type": "percentile_and",
-        "percentiles": {"60日波動率": 30},
-        "query": "(df['60日波動率'] <= df['60日波動率'].quantile(0.3)) & (df['Beta'] < 1)"
-    },
-    {
-        "label_zh": "價值股",
-        "label_en": "Value Stock",
-        "description": "市值在所有股票中排名後30%",
-        "columns": ["市值"],
-        "query_type": "percentile",
-        "percentile": 30,
-        "query": "df['市值'] <= df['市值'].quantile(0.3)"
-    }
-    ]
-    data= json.loads(json_string)
+    json_string = """{
+        "investing_labels": [
+            {
+            "label_zh": "穩健波動",
+            "label_en": "Low Volatility",
+            "description": "60日波動率在所有股票下30%，且 Beta < 1",
+            "columns": [{"item": "60日波動率"}, {"item": "Beta"}],
+            "query_type": "percentile_and",
+            "percentiles": {"60日波動率": 30},
+            "query": "(df['60日波動率'] <= df['60日波動率'].quantile(0.3)) & (df['Beta'] < 1)"
+            }
+        ],
+        "industry_labels": [
+            {
+            "label_zh": "科技股",
+            "label_en": "Technology Stock",
+            "description": "產業分類相關欄位包含『科技』、『半導體』、『資訊』等關鍵字",
+            "columns": [{"item": "GICS行業板塊"}, {"item": "Class L4 Nm"}, {"item": "當地分類簡介"}],
+            "query_type": "keyword",
+            "keywords": [{"item": "科技"}, {"item": "半導體"}, {"item": "資訊"}],
+            "query": "欄位中包含任一關鍵字"
+            }
+        ]
+    }"""
+    # json_str = json.dumps(json_string)       # 轉為 JSON 字串
+    data = json.loads(json_string)
     combined_mask = pd.Series([True] * len(df))
 
     # 遍歷所有可能是 label 的欄位（只處理 list 結構）
@@ -238,7 +247,10 @@ def echo():
     # print("Received data:", data)
 
 
-    return jsonify({"result": df_result, "weight" : df_weights})
+    return jsonify({
+    "result": df_result.to_dict(orient="records"),
+    "weight": df_weights.to_dict(orient="records")
+    })
 
 if __name__ == '__main__':
     app.run()
