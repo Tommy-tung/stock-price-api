@@ -276,10 +276,11 @@ def echo():
     base_url = request.host_url.rstrip("/")
     public_url = f"{base_url}/static/reports/{filename}"
 
-    return jsonify({
-                    "message": "✅ 報表產生成功",
-                    "url": public_url
-                })
+    return public_url
+    # return jsonify({
+    #                 "message": "✅ 報表產生成功",
+    #                 "url": public_url
+    #             })
 
 
     # return jsonify({
