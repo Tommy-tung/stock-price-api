@@ -12,7 +12,9 @@ from pypfopt.risk_models import CovarianceShrinkage
 from pypfopt.efficient_frontier.efficient_semivariance import EfficientSemivariance
 from pypfopt.efficient_frontier.efficient_cvar import EfficientCVaR
 from pypfopt.risk_models import sample_cov
-# import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg') 
+import matplotlib.pyplot as plt
 import cvxpy as cp
 import requests
 import numpy as np
@@ -65,7 +67,7 @@ def compute_risk_parity_weights(cov_matrix):
 
 # 股票清單與 S&P 500
 # pool = ['AAPL','MSFT','MCD','META','AMZN']
-def portfolio(tickerslist):
+def portfolio(tickerslist,  save_path):
     tickers = tickerslist
     benchmark = '^GSPC'
 
@@ -169,7 +171,24 @@ def portfolio(tickerslist):
     df_result = pd.DataFrame(results)
     df_weights = pd.DataFrame(weights_output).fillna(0)
 
-    return df_result, df_weights
+    # 繪圖：報酬曲線
+    cumulative_df = pd.DataFrame(cumulative_returns)
+    plt.figure(figsize=(10, 6))
+    for col in cumulative_df.columns:
+        plt.plot(cumulative_df.index, cumulative_df[col], label=col)
+    plt.title("Cumulative Return Comparison (Models vs S&P 500)")
+    plt.xlabel("Date")
+    plt.ylabel("Cumulative Return")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    filename = f"{uuid.uuid4()}.png"
+    path = os.path.join(save_path, filename)
+    plt.savefig(path)
+    plt.close()
+
+    return df_result, df_weights, filename
     
 
 
@@ -184,32 +203,10 @@ def echo():
     name = data.get('name')
     json_string = data.get('stock_json')
     df = pd.read_excel('s&p500_data.xlsx')
-    # df = pd.read_excel('/Users/tommy84729/富邦/黑客松/stock_price_api/s&p500_data.xlsx')
-    # json_string = """{
-    #     "investing_labels": [
-    #         {
-    #         "label_zh": "穩健波動",
-    #         "label_en": "Low Volatility",
-    #         "description": "60日波動率在所有股票下30%，且 Beta < 1",
-    #         "columns": [{"item": "60日波動率"}, {"item": "Beta"}],
-    #         "query_type": "percentile_and",
-    #         "percentiles": {"60日波動率": 30},
-    #         "query": "(df['60日波動率'] <= df['60日波動率'].quantile(0.3)) & (df['Beta'] < 1)"
-    #         }
-    #     ],
-    #     "industry_labels": [
-    #         {
-    #         "label_zh": "科技股",
-    #         "label_en": "Technology Stock",
-    #         "description": "產業分類相關欄位包含『科技』、『半導體』、『資訊』等關鍵字",
-    #         "columns": [{"item": "GICS行業板塊"}, {"item": "Class L4 Nm"}, {"item": "當地分類簡介"}],
-    #         "query_type": "keyword",
-    #         "keywords": [{"item": "科技"}, {"item": "半導體"}, {"item": "資訊"}],
-    #         "query": "欄位中包含任一關鍵字"
-    #         }
-    #     ]
-    # }"""
-    # json_str = json.dumps(json_string)       # 轉為 JSON 字串
+    # 使用 Flask root_path 建立儲存目錄
+    reports_dir = os.path.join(app.root_path, "static", "reports")
+    os.makedirs(reports_dir, exist_ok=True)
+
     data = json.loads(json_string)
     combined_mask = pd.Series([True] * len(df))
 
@@ -248,24 +245,23 @@ def echo():
     final_result = df[combined_mask]
     pool=final_result['代碼'].tolist()
     pool = [item.split()[0] for item in pool]
-    df_result, df_weights = portfolio(pool)
+    df_result, df_weights, portfolio_plot_filename = portfolio(pool, reports_dir)
     # stock_list = df['代碼'].values[:5].tolist()
     # print("Received data:", data)
     df_result = df_result[['Model','Annual Return', 'Max Drawdown',  'Sharpe Ratio','Total Return', 'Volatility']]
  
-    df_intro = pd.DataFrame(['a', 'b'])
+
     df_weights_with_index = df_weights.copy()
     df_weights_with_index.insert(0, "個股標的", pool)
+    df_intro = df[df['代碼'].isin(final_result['代碼'].tolist())][['GICS行業板塊' ,'公司簡介']]
+    df_intro.insert(0, "個股標的", pool)
+    plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
 
-    html_result = generate_investment_report_html(df_result, df_weights_with_index, df_intro)
+    html_result = generate_investment_report_html(df_result, df_weights_with_index, df_intro, plot_url)
 
     # 產生唯一報表名稱
     report_id = str(uuid.uuid4())
     filename = f"{report_id}.html"
-
-    # 使用 Flask root_path 建立儲存目錄
-    reports_dir = os.path.join(app.root_path, "static", "reports")
-    os.makedirs(reports_dir, exist_ok=True)
 
     # 寫入 HTML 檔案
     html_path = os.path.join(reports_dir, filename)
