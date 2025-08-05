@@ -257,7 +257,7 @@ def echo():
     df_intro.insert(0, "個股標的", pool)
     plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
 
-    html_result = generate_investment_report_html(df_result, df_weights_with_index, df_intro, plot_url)
+    html_result = generate_investment_report_html(df_weights_with_index, df_result,  df_intro, plot_url)
 
     # 產生唯一報表名稱
     report_id = str(uuid.uuid4())

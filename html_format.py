@@ -73,7 +73,7 @@ def generate_investment_report_html(df_stocks, df_backtest, df_intro, plot_url):
                     <img src="{{ plot_url }}" alt="Portfolio Performance Chart">
                 </div>
                 <div class="flex-item">
-                    <h5>📋 回測統計數據</h5>
+                    <h5>📋 績效回測統計數據</h5>
                     {{ backtest_table }}
                 </div>
             </div>
