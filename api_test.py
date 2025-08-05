@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string, url_for
 import pandas as pd
 import datetime
 import time
@@ -16,6 +16,9 @@ from pypfopt.risk_models import sample_cov
 import cvxpy as cp
 import requests
 import numpy as np
+from html_format import generate_investment_report_html
+import uuid
+import os 
 
 # 下載股價資料
 def clean_query(query_str):
@@ -248,13 +251,35 @@ def echo():
     df_result, df_weights = portfolio(pool)
     # stock_list = df['代碼'].values[:5].tolist()
     # print("Received data:", data)
+    df_result = df_result[['Model','Annual Return', 'Max Drawdown',  'Sharpe Ratio','Total Return', 'Volatility']]
+ 
+    df_intro = pd.DataFrame(['a', 'b'])
+    df_weights_with_index = df_weights.copy()
+    df_weights_with_index.insert(0, "個股標的", pool)
 
+    html_result = generate_investment_report_html(df_result, df_weights_with_index, df_intro)
 
-    return jsonify({
-        "name" : name,
-        "result": df_result.to_dict(orient="records"),
-        "weight": df_weights.to_dict(orient="records")
-    })
+    file_id = str(uuid.uuid4())
+    filename = f"{file_id}.html"
+    current_path = '/Users/tommy84729/富邦/黑客松/stock_price_api/'
+    save_path = os.path.join(current_path, "static", "reports")
+    os.makedirs(save_path, exist_ok=True)
+    full_file_path = os.path.join(save_path, filename)
+
+    # 寫入 HTML 檔案
+    with open(full_file_path, "w", encoding="utf-8") as f:
+        f.write(html_result)
+
+    # 建立可供點擊的網址
+    report_url = url_for('static', filename = f'reports/{filename}', _external = True)
+
+    return f"✅ 報告已產生：<a href='{report_url}' target='_blank'>{report_url}</a>"
+
+    # return jsonify({
+    # "result": df_result.to_dict(orient="records"),
+    # "weight": df_weights.to_dict(orient="records")
+    # })
+    # return render_template_string(html_result)
 
 if __name__ == '__main__':
     app.run()
