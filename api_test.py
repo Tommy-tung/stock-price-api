@@ -259,21 +259,28 @@ def echo():
 
     html_result = generate_investment_report_html(df_result, df_weights_with_index, df_intro)
 
-    file_id = str(uuid.uuid4())
-    filename = f"{file_id}.html"
-    current_path = '/Users/tommy84729/富邦/黑客松/stock_price_api/'
-    save_path = os.path.join(current_path, "static", "reports")
-    os.makedirs(save_path, exist_ok=True)
-    full_file_path = os.path.join(save_path, filename)
+    # 產生唯一報表名稱
+    report_id = str(uuid.uuid4())
+    filename = f"{report_id}.html"
+
+    # 使用 Flask root_path 建立儲存目錄
+    reports_dir = os.path.join(app.root_path, "static", "reports")
+    os.makedirs(reports_dir, exist_ok=True)
 
     # 寫入 HTML 檔案
-    with open(full_file_path, "w", encoding="utf-8") as f:
+    html_path = os.path.join(reports_dir, filename)
+    with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_result)
 
-    # 建立可供點擊的網址
-    report_url = url_for('static', filename = f'reports/{filename}', _external = True)
+    # 組出公開的網址（Render 會自動公開 static 資源）
+    base_url = request.host_url.rstrip("/")
+    public_url = f"{base_url}/static/reports/{filename}"
 
-    return f"✅ 報告已產生：<a href='{report_url}' target='_blank'>{report_url}</a>"
+    return jsonify({
+                    "message": "✅ 報表產生成功",
+                    "url": public_url
+                })
+
 
     # return jsonify({
     # "result": df_result.to_dict(orient="records"),
