@@ -57,7 +57,7 @@ def generate_investment_report_html(df_stocks, df_backtest, df_intro, plot_url):
 
         <!-- 頁面大標題 -->
         <div class="text-center">
-            <h1 class="display-4">💼 個人化投資組合分析大屌報告</h1>
+            <h1 class="display-4">💼 個人化投資組合分析報告</h1>
         </div>
 
         <div class="section">
