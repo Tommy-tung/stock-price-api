@@ -10,5 +10,6 @@ scikit-learn==1.1.3
 cvxpy==1.7.1
 gunicorn==21.2.0
 matplotlib==3.7.3
+psutil==5.9.8
 uuid
 scs
