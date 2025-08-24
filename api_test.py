@@ -251,7 +251,7 @@ def echo():
     df_weights_with_index.insert(0, "個股標的", pool)
     df_weights_with_index = df_weights_with_index[df_weights_with_index['投資比例'] > 0]
 
-    df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCBusinessSector' ,'公司簡介']]
+    df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCBusinessSector' ,'簡介']]
     df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
     plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
     
