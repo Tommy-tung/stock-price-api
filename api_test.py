@@ -253,9 +253,8 @@ def echo():
     df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['GICS行業板塊' ,'公司簡介']]
     df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
     plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
-    background_url = url_for('static', filename=f'fubon_icon.jpg')
     
-    html_result = generate_investment_report_html(df_weights_with_index[['個股標的', '投資比例']], df_result['ga_table'], df_intro, plot_url, background_url)
+    html_result = generate_investment_report_html(df_weights_with_index[['個股標的', '投資比例']], df_result['ga_table'], df_intro, plot_url)
 
     # 產生唯一報表名稱
     report_id = str(uuid.uuid4())
