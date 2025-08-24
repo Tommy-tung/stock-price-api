@@ -235,8 +235,9 @@ def echo():
     name = data.get('name')
     pool = data.get('stock_list')
     risk_profile = data.get('risk_profile')
-    df = pd.read_excel('s&p500_data.xlsx')
-    df['代碼'] = [item.split()[0] for item in df['代碼']]
+    # df = pd.read_excel('s&p500_data.xlsx')
+    df = pd.read_excel('data2.xlsx')
+    # df['代碼'] = [item.split()[0] for item in df['代碼']]
     # 使用 Flask root_path 建立儲存目錄
     reports_dir = os.path.join(app.root_path, "static", "reports")
     os.makedirs(reports_dir, exist_ok=True)
@@ -250,7 +251,7 @@ def echo():
     df_weights_with_index.insert(0, "個股標的", pool)
     df_weights_with_index = df_weights_with_index[df_weights_with_index['投資比例'] > 0]
 
-    df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['GICS行業板塊' ,'公司簡介']]
+    df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCBusinessSector' ,'公司簡介']]
     df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
     plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
     
