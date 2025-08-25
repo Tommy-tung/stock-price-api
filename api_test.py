@@ -151,7 +151,7 @@ def build_ga_comparison_table(model_name, w, port_ret, price_df, sp500_ret):
         ["Stability", "Average DD duration (days)",
          f"{avg_len_m:.1f}", f"{avg_len_b:.1f}"],
     ]
-    return pd.DataFrame(data, columns=["Category","Metric",model_name,"S&P 500"])
+    return pd.DataFrame(data, columns=["Category","Metric",model_name,"S&P 500"]), asset_score_x
 
 # === 根據屬性選模型 ===
 def select_model_by_profile(profile, mu, S, price_df, returns):
@@ -204,7 +204,7 @@ def portfolio_by_profile(tickerslist, risk_profile, save_path):
     # === (2) 最終資產配置（%） === w
 
     # === (3) GeneratedAssets 風格比較表 ===
-    ga_table=build_ga_comparison_table(chosen_model,w,port_ret,price_df,sp_ret)
+    ga_table, asset_score = build_ga_comparison_table(chosen_model,w,port_ret,price_df,sp_ret)
 
     # 圖：累積報酬
     cum_df=pd.DataFrame({chosen_model:stats["Cumulative"],"S&P 500":sp_stats["Cumulative"]})
@@ -220,7 +220,7 @@ def portfolio_by_profile(tickerslist, risk_profile, save_path):
     plt.close()
 
     return {"profile":risk_profile,"chosen_model":chosen_model,"weights":w,
-            "results":results,"ga_table":ga_table,"cumulative":filename}
+            "results":results,"ga_table":ga_table,"cumulative":filename, "asset_score" : asset_score}
     
 
 
@@ -270,11 +270,11 @@ def echo():
     base_url = request.host_url.rstrip("/")
     public_url = f"{base_url}/static/reports/{filename}"
 
-    return public_url
-    # return jsonify({
-    #                 "message": "✅ 報表產生成功",
-    #                 "url": public_url
-    #             })
+    # return public_url
+    return jsonify({
+                    "asset_score": round(df_result['asset_score'], 2),
+                    "url": public_url
+                })
 
 
     # return jsonify({
