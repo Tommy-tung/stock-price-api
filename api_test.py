@@ -208,15 +208,40 @@ def portfolio_by_profile(tickerslist, risk_profile, save_path):
 
     # 圖：累積報酬
     cum_df=pd.DataFrame({chosen_model:stats["Cumulative"],"S&P 500":sp_stats["Cumulative"]})
-    plt.figure(figsize=(10,6))
-    for col in cum_df.columns: 
-        plt.plot(cum_df.index,cum_df[col],label=col)
-    plt.title(f"Cumulative Return: {chosen_model} (Profile: {risk_profile}) vs S&P500")
-    plt.legend()
-    plt.grid(True)
+    # 設定線條顏色
+    plt.figure(figsize=(12, 7.5), facecolor='#0e0e10', dpi = 100)  # 圖片整體背景黑色
+    ax = plt.gca()
+    ax.set_facecolor('#0e0e10')  # 座標軸背景黑色
+
+    # 設定線條顏色與光暈
+    colors = {chosen_model: '#34e1eb',  # 桃紅色
+            "S&P 500": '#ffffff'}     # 白色
+
+    for col in cum_df.columns:
+        # 光暈效果：先畫寬一點的透明線條
+        plt.plot(cum_df.index, cum_df[col], linewidth=8, color=colors[col], alpha=0.1)
+        # 再畫正常線條
+        plt.plot(cum_df.index, cum_df[col], label=col, color=colors[col], linewidth=2)
+
+    # 標題與文字顏色
+    plt.title(f"Cumulative Return: {chosen_model} (Profile: {risk_profile}) vs S&P500", color='#e0e0e0', fontsize = 20, fontname="Heiti TC",)
+    plt.xlabel("Date", color='#e0e0e0', fontsize=18)
+    plt.ylabel("Cumulative Return", color='#e0e0e0', fontsize=18)
+
+    # 刻度字體大小與顏色
+    plt.xticks(color='#e0e0e0', fontsize=14, rotation = 35)
+    plt.yticks(color='#e0e0e0', fontsize=14)
+
+    # 圖例文字顏色與背景
+    plt.legend(facecolor='#1c1c1f', edgecolor='#7b61ff', labelcolor='#e0e0e0')
+
+    # 網格線顏色
+    plt.grid(True, color='#2a2a2d')
+
+    # 儲存圖片，確保底色黑色
     filename = f"{uuid.uuid4()}.png"
     path = os.path.join(save_path, filename)
-    plt.savefig(path)
+    plt.savefig(path, facecolor='#0e0e10', bbox_inches='tight')
     plt.close()
 
     return {"profile":risk_profile,"chosen_model":chosen_model,"weights":w,
@@ -251,6 +276,7 @@ def echo():
     df_weights_with_index = pd.DataFrame(df_result['weights'], columns = ['投資比例'])
     df_weights_with_index.insert(0, "個股標的", pool)
     df_weights_with_index = df_weights_with_index[df_weights_with_index['投資比例'] > 0]
+    df_weights_with_index['投資比例'] = df_weights_with_index['投資比例'].apply(lambda x: f"{x*100:.1f}%")
 
     df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCBusinessSector' ,'簡介']]
     df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
