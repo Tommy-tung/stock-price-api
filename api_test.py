@@ -151,7 +151,7 @@ def build_ga_comparison_table(model_name, w, port_ret, price_df, sp500_ret):
         ["Stability", "Average DD duration (days)",
          f"{avg_len_m:.1f}", f"{avg_len_b:.1f}"],
     ]
-    return pd.DataFrame(data, columns=["Category","Metric",model_name,"S&P 500"]), asset_score_x
+    return pd.DataFrame(data, columns=["Category","Metric","investment strategy","S&P 500"]), asset_score_x
 
 # === 根據屬性選模型 ===
 def select_model_by_profile(profile, mu, S, price_df, returns):
