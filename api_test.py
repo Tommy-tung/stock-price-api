@@ -283,6 +283,7 @@ def echo():
     # df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
     df_intro = pd.merge(df_weights_with_index[['個股標的']], df[['代碼', 'TR.CompanyMarketCap','TR.TRBCIndustryGroup', '簡介']] ,left_on='個股標的', right_on = '代碼', how='left')
     df_intro['TR.CompanyMarketCap'] = (pd.to_numeric(df_intro['TR.CompanyMarketCap'], errors='coerce') / 1e9).round(2).astype(str) + "B"
+    df_intro = df_intro.drop('代碼', axis=1)
     df_intro.columns = ['個股標的', '市值', '產業類型', '個股簡介']
     plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
     
