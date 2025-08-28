@@ -214,7 +214,7 @@ def portfolio_by_profile(tickerslist, risk_profile, save_path):
     ax.set_facecolor('#0e0e10')  # 座標軸背景黑色
 
     # 設定線條顏色與光暈
-    colors = {chosen_model: '#34e1eb',  # 桃紅色
+    colors = {chosen_model: '#008fc7',  # 富邦藍
             "S&P 500": '#ffffff'}     # 白色
 
     for col in cum_df.columns:
@@ -258,9 +258,9 @@ def echo():
     data = request.get_json()
     print(data)
     name = data.get('name')
-    # pool = data.get('stock_list')
     pool = json.loads(data.get('stock_list'))
     risk_profile = data.get('risk_profile')
+    intro_text = data.get('intro_text')
     # df = pd.read_excel('s&p500_data.xlsx')
     df = pd.read_excel('data2.xlsx')
     # df['代碼'] = [item.split()[0] for item in df['代碼']]
@@ -276,13 +276,17 @@ def echo():
     df_weights_with_index = pd.DataFrame(df_result['weights'], columns = ['投資比例'])
     df_weights_with_index.insert(0, "個股標的", pool)
     df_weights_with_index = df_weights_with_index[df_weights_with_index['投資比例'] > 0]
+    cf_weights_with_index = df_weights_with_index.sort_values(by = '投資比例', ascending=False)
     df_weights_with_index['投資比例'] = df_weights_with_index['投資比例'].apply(lambda x: f"{x*100:.1f}%")
 
-    df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCBusinessSector' ,'簡介']]
-    df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
+    # df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCIndustryGroup' ,'簡介']]
+    # df_intro.insert(0, "個股標的", df_weights_with_index['個股標的'].tolist())
+    df_intro = pd.merge(df_weights_with_index[['個股標的']], df[['代碼', 'TR.CompanyMarketCap','TR.TRBCIndustryGroup', '簡介']] ,left_on='個股標的', right_on = '代碼', how='left')
+    df_intro['TR.CompanyMarketCap'] = (df_intro['TR.CompanyMarketCap'] / 1e9).round(2).astype(str) + "B"
+    df_intro.columns = ['個股標的', '市值', '產業類型', '個股簡介']
     plot_url = url_for('static', filename=f'reports/{portfolio_plot_filename}')
     
-    html_result = generate_investment_report_html(df_weights_with_index[['個股標的', '投資比例']], df_result['ga_table'], df_intro, plot_url)
+    html_result = generate_investment_report_html(name, intro_text,df_weights_with_index[['個股標的', '投資比例']], df_result['ga_table'], df_intro, plot_url)
 
     # 產生唯一報表名稱
     report_id = str(uuid.uuid4())
