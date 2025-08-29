@@ -276,7 +276,7 @@ def echo():
     df_weights_with_index = pd.DataFrame(df_result['weights'], columns = ['投資比例'])
     df_weights_with_index.insert(0, "個股標的", pool)
     df_weights_with_index = df_weights_with_index[df_weights_with_index['投資比例'] > 0]
-    cf_weights_with_index = df_weights_with_index.sort_values(by = '投資比例', ascending=False)
+    df_weights_with_index = df_weights_with_index.sort_values(by = '投資比例', ascending=False)
     df_weights_with_index['投資比例'] = df_weights_with_index['投資比例'].apply(lambda x: f"{x*100:.1f}%")
 
     # df_intro = df[df['代碼'].isin(df_weights_with_index['個股標的'].tolist())][['TR.TRBCIndustryGroup' ,'簡介']]
