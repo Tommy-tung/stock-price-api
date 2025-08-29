@@ -153,7 +153,8 @@ def generate_investment_report_html(name, intro_text, df_stocks, df_backtest, df
             .table th, .table td {
                 text-align: center !important;
                 vertical-align: middle;
-                border: 1px solid #ffffff; 
+                border-top: 1px solid #ffffff; 
+                border-bottom: 1px solid #ffffff; 
                 padding-top: 8px;    /* 上方間距 */
                 padding-bottom: 8px; 
                 word-wrap: break-word;  /* 避免長字撐破表格 */
