@@ -39,8 +39,9 @@ def generate_investment_report_html(name, intro_text, df_stocks, df_backtest, df
             .set_td_classes(td_classes)
             .set_table_styles([
                 {'selector': 'th:nth-child(1), td:nth-child(1)', 'props': [('width', '15%')]},
-                {'selector': 'th:nth-child(2), td:nth-child(2)', 'props': [('width', '15%')]},
-                {'selector': 'th:nth-child(3), td:nth-child(3)', 'props': [('width', '70%'), ('text-align', 'left')]},
+                {'selector': 'th:nth-child(2), td:nth-child(2)', 'props': [('width', '10%')]},
+                {'selector': 'th:nth-child(3), td:nth-child(3)', 'props': [('width', '15%')]},
+                {'selector': 'th:nth-child(4), td:nth-child(4)', 'props': [('width', '60%'), ('text-align', 'left')]},
             ])
             .to_html(classes="table table-dark table-striped")
     )
